@@ -1,0 +1,192 @@
+---
+title: "Global Education Analysis"
+author: "Raif El-Khatib"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+# Load your education dataset
+edu_data <- read.csv("C:/Users/AurumPC/Downloads/archive (1)/Global_Education.csv", stringsAsFactors = FALSE)
+
+# Show code in other chunks
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+## Business Problem
+
+I want to explore how education and economic factors are connected across different countries. For instance, do nations where more young people can read and write also have lower unemployment? Are boys and girls finishing primary school at similar rates, or do some fall behind? And how does having a lot of children out of school affect the overall success of primary education?
+
+I will look at global education data to answer these questions and provide practical insights for a non-profit organization that wants to help improve education outcomes around the world.
+
+## Key Questions
+
+1.Do countries where more young people can read and write tend to have lower unemployment?
+2.Are boys and girls finishing primary school at similar rates, or is one gender falling behind?
+3.When more children are out of school, does it affect overall primary school completion?
+
+
+
+## Hypotheses
+
+Hypothesis 1: Socioeconomic Connection
+- Null (H0): There is no link between youth literacy levels and unemployment rates.
+- Alternative (H1): Countries with more young people who can read and write tend to have lower unemployment.
+
+Hypothesis 2: Gender in Primary Completion
+- Null (H0): Boys and girls finish primary school at similar rates, no meaningful difference.
+- Alternative (H1): There is a difference between boys and girls primary completion rates.
+
+Hypothesis 3: Out of School Impact
+- Null (H0): Having more children out of school does not affect overall primary completion.
+- Alternative (H1): Higher out of school rates lead to lower primary school completion.
+
+
+
+## Exploratory Data Analysis
+I want to take a first look at my dataset to understand the key variables which are: youth literacy, unemployment, primary completion rates, and out of school rates. This will help me see patterns before testing my hypotheses.
+
+```{r}
+# View the first few rows
+head(edu_data)
+
+# Quick summary of key columns
+summary(edu_data$Youth_15_24_Literacy_Rate_Male)
+summary(edu_data$Youth_15_24_Literacy_Rate_Female)
+summary(edu_data$Completion_Rate_Primary_Male)
+summary(edu_data$Completion_Rate_Primary_Female)
+summary(edu_data$OOSR_Primary_Age_Male)
+summary(edu_data$OOSR_Primary_Age_Female)
+summary(edu_data$Unemployment_Rate)
+
+# Check column names
+colnames(edu_data)
+
+# Scatter plot: Youth literacy vs Unemployment
+plot(edu_data$Youth_15_24_Literacy_Rate_Male, edu_data$Unemployment_Rate,
+     main="Youth Literacy vs Unemployment",
+     xlab="Youth Literacy Rate (Male) %",
+     ylab="Unemployment Rate %",
+     pch=19, col="blue")
+
+# Boxplot: Primary Completion Rate by Gender
+boxplot(edu_data$Completion_Rate_Primary_Male, edu_data$Completion_Rate_Primary_Female,
+        names=c("Male","Female"),
+        main="Primary Completion Rate by Gender",
+        ylab="Completion Rate %",
+        col=c("lightblue","pink"))
+
+# Histogram: Out-of-School Rate (Primary)
+hist(edu_data$OOSR_Primary_Age_Male,
+     main="Distribution of Primary Out-of-School Rate (Male)",
+     xlab="Out-of-School Rate %",
+     col="orange", border="white")
+
+```
+## Data Cleaning
+
+I need to make sure my dataset is ready for analysis. I am going to check for missing values and make sure all columns have the correct type.
+
+```{r}
+# Check for missing values
+colSums(is.na(edu_data))
+
+# Check data types of all columns
+str(edu_data)
+
+```
+
+## Descriptive Statistics and Plots
+
+I want to see how the key variables look before testing my hypotheses. This includes youth literacy, unemployment, primary completion rates, and out of school rates.
+
+```{r}
+# Convert the relevant columns to numeric (safely)
+numeric_cols <- c("OOSR_Pre0Primary_Age_Male","OOSR_Pre0Primary_Age_Female",
+                  "OOSR_Primary_Age_Male","OOSR_Primary_Age_Female",
+                  "OOSR_Lower_Secondary_Age_Male","OOSR_Lower_Secondary_Age_Female",
+                  "OOSR_Upper_Secondary_Age_Male","OOSR_Upper_Secondary_Age_Female",
+                  "Completion_Rate_Primary_Male","Completion_Rate_Primary_Female",
+                  "Completion_Rate_Lower_Secondary_Male","Completion_Rate_Lower_Secondary_Female",
+                  "Completion_Rate_Upper_Secondary_Male","Completion_Rate_Upper_Secondary_Female",
+                  "Grade_2_3_Proficiency_Reading","Grade_2_3_Proficiency_Math",
+                  "Primary_End_Proficiency_Reading","Primary_End_Proficiency_Math",
+                  "Lower_Secondary_End_Proficiency_Reading","Lower_Secondary_End_Proficiency_Math",
+                  "Youth_15_24_Literacy_Rate_Male","Youth_15_24_Literacy_Rate_Female",
+                  "Birth_Rate","Gross_Primary_Education_Enrollment","Gross_Tertiary_Education_Enrollment",
+                  "Unemployment_Rate")
+
+# Convert columns to numeric, suppress warnings for non-numeric entries
+edu_data[numeric_cols] <- lapply(edu_data[numeric_cols], function(x) as.numeric(as.character(x)))
+
+# Remove rows that are completely empty in key columns
+edu_data_clean <- edu_data[rowSums(is.na(edu_data[numeric_cols])) < length(numeric_cols), ]
+
+# Quick summary of key numeric columns
+summary(edu_data_clean[numeric_cols])
+
+# Scatter plot: Youth Literacy vs Unemployment
+plot(edu_data_clean$Youth_15_24_Literacy_Rate_Male, edu_data_clean$Unemployment_Rate,
+     main = "Youth Literacy vs Unemployment",
+     xlab = "Youth Literacy Rate (Male) %",
+     ylab = "Unemployment Rate %",
+     pch = 19, col = "blue")
+
+# Boxplot: Primary Completion Rate by Gender
+boxplot(edu_data_clean$Completion_Rate_Primary_Male,
+        edu_data_clean$Completion_Rate_Primary_Female,
+        names = c("Male", "Female"),
+        main = "Primary Completion Rate by Gender",
+        ylab = "Completion Rate %",
+        col = c("lightblue","pink"))
+
+# Histogram: Out-of-School Rate (Primary)
+hist(edu_data_clean$OOSR_Primary_Age_Male,
+     main = "Distribution of Primary Out-of-School Rate (Male)",
+     xlab = "Out-of-School Rate %",
+     col = "orange", border = "white")
+
+```
+## Hypothesis Testing
+
+I will now test my three hypotheses using statistical tests to see if the patterns I saw are significant.
+
+```{r}
+# Hypothesis 1: Correlation between Youth Literacy and Unemployment
+cor.test(edu_data$Youth_15_24_Literacy_Rate_Male + edu_data$Youth_15_24_Literacy_Rate_Female / 2, 
+         edu_data$Unemployment_Rate, method = "pearson")
+
+# Hypothesis 2: Gender Difference in Primary Completion
+t.test(edu_data$Completion_Rate_Primary_Male, edu_data$Completion_Rate_Primary_Female, paired = FALSE)
+
+# Hypothesis 3: Correlation between Out-of-School Rate (Primary) and Primary Completion
+cor.test((edu_data$OOSR_Primary_Age_Male + edu_data$OOSR_Primary_Age_Female) / 2, 
+         (edu_data$Completion_Rate_Primary_Male + edu_data$Completion_Rate_Primary_Female) / 2, 
+         method = "pearson")
+
+```
+**Interpretation:**  
+Looking at the tests, a few things are clear. Countries where more young people can read are likely to have less unemployment. When I compare boys and girls finishing primary school, I can see if one gender is falling behind. Also, by checking how many kids are out of school and finishing primary, I can spot which countries are really struggling.
+
+
+
+## Final Discussion and Recommendations
+
+From my analysis, I found that countries with higher youth literacy are kind of more likely to have lower unemployment rates. Male and female primary completion rates are mostly similar, but some countries show gaps. Higher out of school rates are linked to lower primary completion, highlighting areas that need attention.
+
+**Recommendations:**  
+- Work on getting more kids into school to boost overall primary completion.  
+- Keep supporting programs that make sure boys and girls have equal chances in education.  
+- Encourage reading and learning activities to help young people get better jobs in the future.
+
+**Limitations:**  
+- Some of the data might be old or incomplete.  
+- I only looked at a few things, so other stuff could also affect the results.
+
+
+**Future Work:**  
+- Add more info about the economy and population to get a more clear picture.  
+- Look at specific regions or countries to get more useful details.
+
+
+
